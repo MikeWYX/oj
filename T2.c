@@ -1,59 +1,135 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct Node {
-    int parent;
-    int sign;
-    int child_count;
-    int* children;
-}Node;
+struct Edge {
+    int u, v, w;
+};
 
-int find_parent(Node* nodes, int id, int r){
-    while(r > 0 && id != 1){
-        id = nodes[id].parent;
-        r--;
-    }
-    return id;
-}
+int parent[5005];
 
-void cover(Node* nodes, int id, int r){
-    if(r == 0){
-        nodes[id].sign = 1;
-        return;
-    }
-    nodes[id].sign = 1;
-    for(int i = 0; i < nodes[id].child_count; i++){
-        cover(nodes, nodes[id].children[i], r-1);
-    }
-    cover(nodes, nodes[id].parent, r-1);
-}
-
-int main(){
-    int n, r, id, min = 0;
-    scanf("%d %d", &n, &r);
-    Node* nodes = (Node*)malloc((n+1) * sizeof(Node));  
-    for(int i = 1; i <= n; i++){
-        nodes[i].sign = 0;
-        nodes[i].child_count = 0;
-        nodes[i].parent = 1;
-    }
+void init(int n) {
     for (int i = 1; i <= n; i++) {
-        scanf("%d", &(nodes[i].child_count));  
-        nodes[i].children = (int*)malloc(nodes[i].child_count * sizeof(int));  
-        for (int j = 0; j < nodes[i].child_count; j++) {
-            scanf("%d", &(nodes[i].children[j]));  
-            nodes[nodes[i].children[j]].parent = i;
+        parent[i] = i;
+    }
+}
+
+int findRoot(int x) {
+    if (x == parent[x]) {
+        return x;
+    } else {
+        return parent[x] = findRoot(parent[x]);
+    }
+}
+
+void unionSets(int x, int y) {
+    int rootX = findRoot(x);
+    int rootY = findRoot(y);
+    if (rootX != rootY) {
+        parent[rootX] = rootY;
+    }
+}
+
+void quickSort(struct Edge* edges, int low, int high) {
+    if (low < high) {
+        struct Edge pivot = edges[low];
+        int i = low + 1;
+        int j = high;
+
+        while (i <= j) {
+            while (i <= j && edges[i].w < pivot.w) {
+                i++;
+            }
+            while (i <= j && edges[j].w > pivot.w) {
+                j--;
+            }
+            if (i <= j) {
+                struct Edge temp = edges[i];
+                edges[i] = edges[j];
+                edges[j] = temp;
+                i++;
+                j--;
+            }
         }
-        if(nodes[i].children[nodes[i].child_count - 1] == n){
-            break;
+
+        struct Edge temp = edges[low];
+        edges[low] = edges[j];
+        edges[j] = temp;
+
+        quickSort(edges, low, j - 1);
+        quickSort(edges, j + 1, high);
+    }
+}
+
+int kruskal(struct Edge* edges, int n, int m) {
+    int sum = 0;
+    init(n);
+
+    for (int i = 0; i < m; i++) {
+        int u = edges[i].u;
+        int v = edges[i].v;
+        int w = edges[i].w;
+
+        if (findRoot(u) != findRoot(v)) {
+            sum += w;
+            unionSets(u, v);
         }
     }
-    for(int i = n; i > 0; i--){
-        if(!nodes[i].sign){
-            min++;
-            id = find_parent(nodes, i, r);
-            cover(nodes, id, r);
+
+    return sum;
+}
+
+int secondMinimumSpanningTree(struct Edge* edges, int n, int m, int minWeight) {
+    int secondMinWeight = -1;
+
+    for (int i = 0; i < m; i++) {
+        if (edges[i].w == minWeight) {
+            continue;
+        }
+
+        init(n);
+        int sum = 0;
+        int count = 0;
+
+        for (int j = 0; j < m; j++) {
+            int u = edges[j].u;
+            int v = edges[j].v;
+            int w = edges[j].w;
+
+            if (findRoot(u) != findRoot(v)) {
+                sum += w;
+                count++;
+                unionSets(u, v);
+            }
+        }
+
+        if (count == n - 1) {
+            if (secondMinWeight == -1 || sum < secondMinWeight) {
+                secondMinWeight = sum;
+            }
         }
     }
-    printf("%d", min);
+
+    return secondMinWeight;
+}
+
+int main() {
+    int n, m;
+    scanf("%d%d", &n, &m);
+
+    struct Edge* edges = (struct Edge*)malloc(m * sizeof(struct Edge));
+    for (int i = 0; i < m; i++) {
+        scanf("%d%d%d", &edges[i].u, &edges[i].v, &edges[i].w);
+    }
+
+    quickSort(edges, 0, m - 1);
+
+    int minWeight = kruskal(edges, n, m);
+    printf("%d\n", minWeight);
+
+    int secondMinWeight = secondMinimumSpanningTree(edges, n, m, minWeight);
+    printf("%d\n", secondMinWeight);
+
+    free(edges);
+
+    return 0;
 }
